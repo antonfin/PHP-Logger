@@ -1,0 +1,183 @@
+
+/*
+ *  @author:    Anton Morozov
+ *  @email:     anton@antonfin.kiev.ua
+ *  @copyright	(c) 2009-2010 by Anton Morozov
+ *  @version:   0.90_32b
+ *
+ *      In 0.90_31b:
+ *          1) Create file if it doesn't exists. Type - file.
+ *          2) Added multy-colors feature for Logger_stdout class, see options "color" and "colors". Start from set color = true!!!
+ *          2) Bugfixes
+ *
+ *      In 0.90_32b:
+ *          1) Bugfixes
+ *          2) Optimization
+ */
+
+Logger - Log::Log4perl implementation for PHP
+
+// Simple examples
+
+require_once ('lib/Logger.php');
+
+You may very flexible configure your logger for your current tasks.
+
+// First version - print log to STDOUT, good decision for simple php system/cron scripts
+
+$config = array(
+    'use'       => array('log'),
+    'appenders' => array(
+            'log'    => array( 'type' => 'stdout' )
+        )
+    );
+
+// I like use other colors for marks other messages on the terminal
+
+$config = array(
+    'use'       => array('log'),
+    'appenders' => array(
+            'log'    => array( 'type' => 'stdout', color => true )
+        )
+    );
+
+// Sometime I set colors. If your color doesn't exist system write text usage default 'green' color (this color default in my terminal)
+
+$config = array(
+    'use' => array('log'),
+    'appenders' => array(
+        'log' => array( 
+            'type' => 'stdout', 
+            'color' => true, 
+            'colors' => array(
+                'debug' => 'yellow',
+                'info'  => 'green',
+                'warn'  => 'purple',
+                'error' => 'cyan',
+                'fatal' => 'red',
+            )
+        )
+    )
+);
+
+// Second version - for WEB-project. I use 2 log files: first with all messages and second 
+// only with error and fatal messages
+
+$config = array(
+    'use'       => array('log_debug', 'log_error'),
+    'appenders' => array(
+            'log_debug' => array( 'type' => 'file', 'filepath' => '../log/debug.log', 'min_log_level' => 'debug' ),
+            'log_error' => array( 'type' => 'file', 'filepath' => '../log/error.log', 'min_log_level' => 'error' )
+        )
+    );
+//
+//  use         - parameter say what are logs usage
+//  appenders   - parameter say how this modes must be work
+//  
+
+I like use own log string format "DATE LEVEL - FILE:FUNCTION:LINE - MESSAGE"
+I formed new config, where set how logger must print messages:
+
+$config = array(
+    'use'       => array('log_debug', 'log_error'),
+    'appenders' => array(
+            'log_debug' => array( 'type' => 'file', 'filepath' => '../log/debug.log', 'min_log_level' => 'debug', 'log_format' => '%d %p - %f:%M:%L - %m'),
+            'log_error' => array( 'type' => 'file', 'filepath' => '../log/error.log', 'min_log_level' => 'error', 'log_format' => '%d %p - %f:%M:%L - %m')
+        )
+    );
+
+You may use own log format:
+%C Fully qualified package (or class) name of the caller
+%d Current date in yyyy/MM/dd hh:mm:ss format
+%t timer in ss.ssss format
+%F File (full path) where the logging event occurred
+%f File (name only) where the logging event occurred
+%H Hostname
+%L Line number within the file where the log statement was issued
+%m The message to be logged
+%m{chomp} The message to be logged, stripped off a trailing newline
+%M Method or subroutine where the logging request was issued
+%n Newline (OS-independent)
+%p Priority of the logging event
+%P pid of the current process
+%T A stack trace of functions called
+%% A literal percent (%) sign
+
+
+But, I don't like repeated, and I added new config parameter "common", config changed:
+
+$config = array(
+    'use'       => array('log_debug', 'log_error'),
+    'common'    => array('log_format' => '%d %p - %f:%M:%L - %m'),
+    'appenders' => array(
+            'log_debug' => array( 'type' => 'file', 'filepath' => '../log/debug.log', 'min_log_level' => 'debug'),
+            'log_error' => array( 'type' => 'file', 'filepath' => '../log/error.log', 'min_log_level' => 'error')
+        )
+    );
+
+// common - it's default for all modes values, but you may have special settings for every modes.
+
+NOTE! Property - type, must have every mode in appenders config part.
+
+Today exists next type:
+1. stdout       - print to STDOUT
+2. file         - print to file
+3. mail         - send email for every log message
+4. syslog       - print to syslog
+
+Planed:
+5. web          - print log to WEB Browser
+6. smtp         - send message usage direct smpt server
+7. sendmail     - send message usage sendmail
+
+/***************************************************
+*************        Options:       ****************
+1. "place"  - string, show what file, filepath or class name logs must be saved
+    Example:
+    place => 'SpecFileClass';                               // Save logs only from class SpecFileClass
+    place => 'api.logger.php';                              // Save logs only from file api.logger.php
+    place => '/var/domain.test/www/php/api.logger.php'      // Save logs only from file '/var/domain.test/www/php/api.logger.php'
+
+2. "place_regexp"   - like "place", but you set regexp.
+    place_regexp => '/Class$/'                                      // Save logs only from classes finishing like "Class"
+    place_regexp => '/^api/'                                        // Save logs only from classes or files starting like "api"
+    place_regexp => '/^TestClass|MyLogger|SpecArray$/'              // Save logs only from classes TestClass, MyLogger and SpecArray
+    place_regexp => '/^\/var\/domain\.test\/lib\/classes/'          // Save all logs from files in folder classes and lower
+    place_regexp => '/^\/var\/domain\.test\/lib\/classes\/API/'     // Save all logs from classes API and API_.... (if PEAR style)
+
+3. "add_var"    - bool, deafult - true. Added $VAR(Number)  - before all new logged variables
+
+4. MANY OTHER OPTIONS SEE CODE OR NEXT Logger README VERSION
+
+*******************************************************/
+
+
+Create logger
+
+require_once( 'lib/Logger.php' );
+
+Logger::set_config( $config );
+
+// create new logger object
+$l = Logger::get_logger();
+
+// print messages
+$l->debug( $array, $string, $int, ... );
+$l->info( $array, $string, $int, ... );
+$l->warn( $array, $string, $int, ... );
+$l->error( $array, $string, $int, ... );
+$l->fatal( $array, $string, $int, ... );
+
+
+For more information see:
+Logger.php          - main logger
+Logger/Common.php   - common log functions
+Logger/*            - modules
+
+And
+
+About Log::Log4perl:
+http://search.cpan.org/~mschilli/Log-Log4perl-1.28/lib/Log/Log4perl.pm
+http://www.perl.com/pub/a/2002/09/11/log4perl.html
+
+
